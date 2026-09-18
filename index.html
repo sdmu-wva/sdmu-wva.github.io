@@ -27,14 +27,14 @@ img{max-width:100%;display:block}
 .container{max-width:1180px;margin:0 auto;padding:0 28px}
 .mono{font-family:var(--mono)}
 .nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 30px;background:rgba(5,8,15,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:2px}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:2px;max-width:60%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .nav-brand svg{flex:none}
 .nav-links{display:flex;align-items:center;gap:30px;font-size:14.5px;color:var(--muted)}
 .nav-links a{transition:color .2s;position:relative;padding:4px 0}
 .nav-links a::after{content:"";position:absolute;left:0;bottom:0;width:0;height:2px;background:var(--cyan);transition:width .25s}
 .nav-links a:hover{color:var(--text)}
 .nav-links a:hover::after{width:100%}
-.nav-right{display:flex;align-items:center;gap:16px}
+.nav-right{display:flex;align-items:center;gap:16px;flex-shrink:0}
 .bgm{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;letter-spacing:1px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:rgba(13,21,38,.6);transition:all .2s;user-select:none}
 .bgm:hover{border-color:var(--line2);color:var(--text)}
 .bgm .dot{width:6px;height:6px;border-radius:50%;background:var(--dim);transition:all .2s}
@@ -46,7 +46,7 @@ img{max-width:100%;display:block}
 .btn.ghost{background:transparent;border:1px solid var(--line2);color:var(--text)}
 .btn.ghost:hover{border-color:var(--cyan);color:var(--cyan);box-shadow:none;background:rgba(77,216,255,.06)}
 .btn.small{padding:7px 18px;font-size:13.5px;border-radius:6px}
-.hero{position:relative;min-height:100vh;display:flex;align-items:center;padding:120px 0 150px;overflow:hidden;background:transparent}
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;padding:120px 0 260px;overflow:hidden;background:transparent}
 #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 #bgShade{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(1200px 640px at 50% 8%,transparent 35%,rgba(3,6,12,.38) 100%),linear-gradient(rgba(3,6,12,.28),rgba(3,6,12,.16) 45%,rgba(3,6,12,.34))}
 section,footer{position:relative;z-index:2}
@@ -103,7 +103,9 @@ section,footer{position:relative;z-index:2}
 @keyframes drop{0%{transform:scaleY(0);transform-origin:top}55%{transform:scaleY(1);transform-origin:top}100%{transform:scaleY(0);transform-origin:bottom}}
 .section-tag{font-family:var(--mono);font-size:15px;letter-spacing:3px;color:var(--cyan);margin-bottom:12px}
 .section-title{font-size:clamp(28px,4.2vw,46px);font-weight:900;letter-spacing:4px}
-.hero-bottom{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:-3px 30px 30px;border-top:1px solid var(--line);background:linear-gradient(transparent,rgba(5,8,15,.9));display:flex;align-items:flex-end;justify-content:center;gap:20px;text-align:center}
+/* 修复：hero-bottom 添加 pointer-events 控制，防止遮挡按钮 */
+.hero-bottom{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:26px 30px 30px;border-top:1px solid var(--line);background:linear-gradient(transparent,rgba(5,8,15,.9));display:flex;align-items:flex-end;justify-content:center;gap:20px;text-align:center;pointer-events:none}
+.hero-bottom > *{pointer-events:auto}
 .hero-bottom .section-title{font-size:clamp(28px,4.2vw,46px)}
 .hero-bottom .side-note{position:absolute;right:30px;bottom:30px;font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:2px;text-align:right}
 section{position:relative;padding:96px 0}
@@ -436,8 +438,36 @@ footer b{color:var(--muted);font-weight:500}
 .game-end{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(5,8,15,.88)}
 .game-end .score-big{font-family:var(--mono);font-size:64px;font-weight:700;color:var(--cyan)}
 .game-end .score-label{color:var(--muted);letter-spacing:3px;font-size:14px}
-@media(max-width:960px){.stats-grid{grid-template-columns:repeat(2,1fr)}.track-grid{grid-template-columns:1fr}.dir-grid{grid-template-columns:repeat(2,1fr)}.nav-links{display:none}.hero{padding-top:110px}}
-@media(max-width:640px){.stats-grid{grid-template-columns:1fr}.dir-grid{grid-template-columns:1fr}.hero h1{letter-spacing:2px}.side-text{display:none}.hero-bottom{flex-direction:column;align-items:center;gap:8px;text-align:center;padding-bottom:76px}.hero-bottom .side-note{position:static;text-align:center;margin-top:8px;right:auto;bottom:auto}footer{flex-direction:column}}
+/* ===== 移动端适配优化 ===== */
+@media(max-width:960px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .track-grid{grid-template-columns:1fr}
+  .dir-grid{grid-template-columns:repeat(2,1fr)}
+  .nav-links{display:none}
+  .hero{padding-top:110px}
+  .bgm span:not(.dot):not(.vol){display:none} /* 隐藏BGM文字 */
+  .bgm{padding:6px 10px}
+  .nav-brand{font-size:15px;letter-spacing:1px;max-width:50%}
+  .nav-right{gap:8px}
+  .btn.small{padding:6px 12px;font-size:12.5px}
+}
+@media(max-width:640px){
+  .stats-grid{grid-template-columns:1fr}
+  .dir-grid{grid-template-columns:1fr}
+  .hero h1{letter-spacing:2px;font-size:36px}
+  .hero .en{font-size:11px;letter-spacing:3px;margin-bottom:16px}
+  .hero-desc{font-size:14px;margin-top:20px}
+  .side-text{display:none}
+  .hero{padding-bottom:180px} /* 修正手机端底部间距 */
+  .scroll-hint{bottom:80px}
+  .hero-bottom{flex-direction:column;align-items:center;gap:8px;text-align:center;padding-bottom:40px}
+  .hero-bottom .side-note{position:static;text-align:center;margin-top:8px;right:auto;bottom:auto}
+  .hero-actions{gap:12px;margin-top:30px}
+  .hero-actions .btn{padding:8px 20px;font-size:14px}
+  footer{flex-direction:column}
+  .nav-brand span{font-size:13px}
+  .nav-brand svg{width:24px;height:24px}
+}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}.rv{opacity:1;transform:none}}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .qr-mask{position:fixed;inset:0;z-index:250;display:none;align-items:center;justify-content:center;background:rgba(3,5,10,.82);backdrop-filter:blur(6px);padding:20px}
