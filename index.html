@@ -2374,7 +2374,9 @@
 				justify-content: center;
 				background: rgba(3, 5, 10, .94);
 				backdrop-filter: blur(12px);
-				padding: 30px
+				padding: 30px;
+				overflow: hidden;
+				touch-action: none;
 			}
 
 			.cert-viewer-mask.open {
@@ -2440,14 +2442,19 @@
 				border: 1px solid var(--line2);
 				border-radius: 16px;
 				overflow: hidden;
-				box-shadow: 0 30px 80px rgba(0, 0, 0, .7)
+				box-shadow: 0 30px 80px rgba(0, 0, 0, .7);
+				touch-action: none;
 			}
 
 			.cert-viewer-img {
 				max-width: 100%;
 				max-height: 100%;
 				object-fit: contain;
-				display: block
+				display: block;
+				transform-origin: center center;
+				will-change: transform;
+				-webkit-user-drag: none;
+				user-select: none;
 			}
 
 			.cert-viewer-info {
@@ -2481,6 +2488,15 @@
 				font-size: 12px;
 				color: var(--dim);
 				letter-spacing: 2px
+			}
+
+			.cert-viewer-hint {
+				margin-top: 10px;
+				font-family: var(--mono);
+				font-size: 11px;
+				letter-spacing: 1px;
+				color: var(--dim);
+				opacity: .8
 			}
 
 			@media(max-width:768px) {
@@ -2848,7 +2864,9 @@
 				justify-content: center;
 				background: rgba(3, 5, 10, .96);
 				backdrop-filter: blur(14px);
-				padding: 30px
+				padding: 30px;
+				overflow: hidden;
+				touch-action: none;
 			}
 
 			.img-viewer-mask.open {
@@ -2916,7 +2934,8 @@
 				border-radius: 16px;
 				overflow: hidden;
 				box-shadow: 0 30px 80px rgba(0, 0, 0, .7);
-				padding: 20px
+				padding: 20px;
+				touch-action: none;
 			}
 
 			.img-viewer-img {
@@ -2926,7 +2945,11 @@
 				height: auto;
 				object-fit: contain;
 				display: block;
-				border-radius: 8px
+				border-radius: 8px;
+				transform-origin: center center;
+				will-change: transform;
+				-webkit-user-drag: none;
+				user-select: none;
 			}
 
 			.img-viewer-caption {
@@ -2952,6 +2975,15 @@
 				font-size: 13px;
 				color: var(--muted);
 				margin-top: 6px
+			}
+
+			.img-viewer-hint {
+				margin-top: 8px;
+				font-family: var(--mono);
+				font-size: 11px;
+				letter-spacing: 1px;
+				color: var(--dim);
+				opacity: .8
 			}
 
 			@media(max-width:768px) {
@@ -3331,7 +3363,7 @@
 				opacity: 1
 			}
 
-			.memory-card:hover {
+						.memory-card:hover {
 				border-color: var(--cyan);
 				transform: scale(1.04)
 			}
@@ -4549,11 +4581,11 @@
 				<div class="cert-grid" id="certGrid"></div>
 			</div>
 		</div>
-		<!-- ===== 证书大图查看器 ===== -->
+		<!-- ===== 证书大图查看器（支持双指缩放/拖动） ===== -->
 		<div class="cert-viewer-mask" id="certViewerMask" role="dialog" aria-modal="true" aria-label="查看证书大图">
 			<div class="cert-viewer">
 				<button class="cert-viewer-close" id="certViewerClose" aria-label="关闭">×</button>
-				<div class="cert-viewer-img-box">
+				<div class="cert-viewer-img-box" id="certViewerBox">
 					<img class="cert-viewer-img" id="certViewerImg" src="" alt="证书大图">
 				</div>
 				<div class="cert-viewer-info">
@@ -4563,19 +4595,21 @@
 						<span id="certViewerYear"></span>
 						<span class="cert-viewer-code" id="certViewerCode"></span>
 					</div>
+					<div class="cert-viewer-hint">双指缩放 · 单指拖动 · 双击还原</div>
 				</div>
 			</div>
 		</div>
-		<!-- ===== 通用图片查看器 ===== -->
+		<!-- ===== 通用图片查看器（支持双指缩放/拖动） ===== -->
 		<div class="img-viewer-mask" id="imgViewerMask" role="dialog" aria-modal="true" aria-label="查看图片大图">
 			<div class="img-viewer">
 				<button class="img-viewer-close" id="imgViewerClose" aria-label="关闭">×</button>
-				<div class="img-viewer-box">
+				<div class="img-viewer-box" id="imgViewerBox">
 					<img class="img-viewer-img" id="imgViewerImg" src="" alt="图片大图">
 				</div>
 				<div class="img-viewer-caption">
 					<div class="img-viewer-title" id="imgViewerTitle"></div>
 					<div class="img-viewer-desc" id="imgViewerDesc"></div>
+					<div class="img-viewer-hint">双指缩放 · 单指拖动 · 双击还原</div>
 				</div>
 			</div>
 		</div>
@@ -4721,6 +4755,264 @@
 						el.classList.add('in');
 					});
 				}
+
+				/* ============================================================
+				   通用图片缩放控制器（支持双指缩放、单指拖动、双击还原）
+				   ============================================================ */
+				function createZoomController(boxEl, imgEl) {
+					var scale = 1;
+					var minScale = 1;
+					var maxScale = 5;
+					var tx = 0,
+						ty = 0;
+					// 单指拖动
+					var dragging = false;
+					var startX = 0,
+						startY = 0;
+					var startTx = 0,
+						startTy = 0;
+					// 双指缩放
+					var pinching = false;
+					var pinchStartDist = 0;
+					var pinchStartScale = 1;
+					var pinchStartTx = 0,
+						pinchStartTy = 0;
+					var pinchStartMidX = 0,
+						pinchStartMidY = 0;
+					// 双击
+					var lastTapTime = 0;
+					var lastTapX = 0,
+						lastTapY = 0;
+					var DOUBLE_TAP_DELAY = 280;
+
+					function applyTransform() {
+						imgEl.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+					}
+
+					function resetTransform(animate) {
+						if (animate) {
+							imgEl.style.transition = 'transform .25s ease';
+							setTimeout(function() {
+								imgEl.style.transition = '';
+							}, 260);
+						}
+						scale = 1;
+						tx = 0;
+						ty = 0;
+						applyTransform();
+					}
+
+					function clampTranslate() {
+						// 限制拖动范围，避免图片被拖出视野太远
+						if (scale <= 1) {
+							tx = 0;
+							ty = 0;
+							return;
+						}
+						var boxRect = boxEl.getBoundingClientRect();
+						var imgRect = imgEl.getBoundingClientRect();
+						// 图片缩放后尺寸
+						var dispW = imgEl.naturalWidth * scale;
+						var dispH = imgEl.naturalHeight * scale;
+						// 允许的最大偏移
+						var maxX = Math.max(0, (dispW - boxRect.width) / 2);
+						var maxY = Math.max(0, (dispH - boxRect.height) / 2);
+						// 加上一点缓冲区
+						maxX += 20;
+						maxY += 20;
+						if (tx > maxX) tx = maxX;
+						if (tx < -maxX) tx = -maxX;
+						if (ty > maxY) ty = maxY;
+						if (ty < -maxY) ty = -maxY;
+					}
+
+					function onTouchStart(e) {
+						if (e.touches.length === 1) {
+							// 单指开始拖动
+							var t = e.touches[0];
+							// 双击检测
+							var now = Date.now();
+							if (now - lastTapTime < DOUBLE_TAP_DELAY &&
+								Math.abs(t.clientX - lastTapX) < 30 &&
+								Math.abs(t.clientY - lastTapY) < 30) {
+								// 双击：切换缩放
+								if (scale > 1.05) {
+									resetTransform(true);
+								} else {
+									// 放大到 2.5 倍，以双击点为中心
+									var boxRect = boxEl.getBoundingClientRect();
+									var cx = t.clientX - boxRect.left - boxRect.width / 2;
+									var cy = t.clientY - boxRect.top - boxRect.height / 2;
+									var targetScale = 2.5;
+									scale = targetScale;
+									tx = -cx * (targetScale - 1);
+									ty = -cy * (targetScale - 1);
+									clampTranslate();
+									imgEl.style.transition = 'transform .25s ease';
+									setTimeout(function() {
+										imgEl.style.transition = '';
+									}, 260);
+									applyTransform();
+								}
+								lastTapTime = 0;
+								return;
+							}
+							lastTapTime = now;
+							lastTapX = t.clientX;
+							lastTapY = t.clientY;
+
+							dragging = true;
+							startX = t.clientX;
+							startY = t.clientY;
+							startTx = tx;
+							startTy = ty;
+						} else if (e.touches.length === 2) {
+							// 双指开始缩放
+							dragging = false;
+							pinching = true;
+							var t1 = e.touches[0],
+								t2 = e.touches[1];
+							pinchStartDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+							pinchStartScale = scale;
+							pinchStartTx = tx;
+							pinchStartTy = ty;
+							pinchStartMidX = (t1.clientX + t2.clientX) / 2;
+							pinchStartMidY = (t1.clientY + t2.clientY) / 2;
+						}
+					}
+
+					function onTouchMove(e) {
+						if (pinching && e.touches.length === 2) {
+							e.preventDefault();
+							var t1 = e.touches[0],
+								t2 = e.touches[1];
+							var dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+							var ratio = dist / pinchStartDist;
+							var newScale = pinchStartScale * ratio;
+							newScale = Math.max(minScale, Math.min(maxScale, newScale));
+							// 以双指中点为中心缩放
+							var boxRect = boxEl.getBoundingClientRect();
+							var midX = (t1.clientX + t2.clientX) / 2;
+							var midY = (t1.clientY + t2.clientY) / 2;
+							var cx = midX - boxRect.left - boxRect.width / 2;
+							var cy = midY - boxRect.top - boxRect.height / 2;
+							// 计算相对起点的偏移变化
+							var scaleChange = newScale / pinchStartScale;
+							var newTx = (pinchStartTx - cx) * scaleChange + cx;
+							var newTy = (pinchStartTy - cy) * scaleChange + cy;
+							scale = newScale;
+							tx = newTx;
+							ty = newTy;
+							clampTranslate();
+							applyTransform();
+						} else if (dragging && e.touches.length === 1) {
+							e.preventDefault();
+							var t = e.touches[0];
+							tx = startTx + (t.clientX - startX);
+							ty = startTy + (t.clientY - startY);
+							clampTranslate();
+							applyTransform();
+						}
+					}
+
+					function onTouchEnd(e) {
+						if (e.touches.length === 0) {
+							dragging = false;
+							pinching = false;
+							// 如果缩放小于1，回弹
+							if (scale < 1) {
+								resetTransform(true);
+							} else if (scale === 1) {
+								tx = 0;
+								ty = 0;
+								applyTransform();
+							}
+						} else if (e.touches.length === 1 && pinching) {
+							// 从双指变为单指，切换为拖动
+							pinching = false;
+							dragging = true;
+							var t = e.touches[0];
+							startX = t.clientX;
+							startY = t.clientY;
+							startTx = tx;
+							startTy = ty;
+						}
+					}
+
+					// 鼠标滚轮缩放（桌面端）
+					function onWheel(e) {
+						e.preventDefault();
+						var delta = e.deltaY > 0 ? 0.9 : 1.1;
+						var newScale = Math.max(minScale, Math.min(maxScale, scale * delta));
+						if (newScale === scale) return;
+						var boxRect = boxEl.getBoundingClientRect();
+						var cx = e.clientX - boxRect.left - boxRect.width / 2;
+						var cy = e.clientY - boxRect.top - boxRect.height / 2;
+						var scaleChange = newScale / scale;
+						tx = (tx - cx) * scaleChange + cx;
+						ty = (ty - cy) * scaleChange + cy;
+						scale = newScale;
+						clampTranslate();
+						applyTransform();
+					}
+
+					// 鼠标拖动（桌面端，方便预览）
+					var mouseDown = false,
+						mouseStartX = 0,
+						mouseStartY = 0,
+						mouseStartTx = 0,
+						mouseStartTy = 0;
+
+					function onMouseDown(e) {
+						if (scale <= 1) return;
+						mouseDown = true;
+						mouseStartX = e.clientX;
+						mouseStartY = e.clientY;
+						mouseStartTx = tx;
+						mouseStartTy = ty;
+						imgEl.style.cursor = 'grabbing';
+					}
+
+					function onMouseMove(e) {
+						if (!mouseDown) return;
+						tx = mouseStartTx + (e.clientX - mouseStartX);
+						ty = mouseStartTy + (e.clientY - mouseStartY);
+						clampTranslate();
+						applyTransform();
+					}
+
+					function onMouseUp() {
+						mouseDown = false;
+						imgEl.style.cursor = '';
+					}
+
+					boxEl.addEventListener('touchstart', onTouchStart, {
+						passive: false
+					});
+					boxEl.addEventListener('touchmove', onTouchMove, {
+						passive: false
+					});
+					boxEl.addEventListener('touchend', onTouchEnd, {
+						passive: false
+					});
+					boxEl.addEventListener('touchcancel', onTouchEnd, {
+						passive: false
+					});
+					boxEl.addEventListener('wheel', onWheel, {
+						passive: false
+					});
+					boxEl.addEventListener('mousedown', onMouseDown);
+					window.addEventListener('mousemove', onMouseMove);
+					window.addEventListener('mouseup', onMouseUp);
+
+					return {
+						reset: function(animate) {
+							resetTransform(animate);
+						},
+						apply: applyTransform
+					};
+				}
+
 				/* ===== 获奖证书数据 ===== */
 				var certData = [{
 						name: '全国大学生创新发明大赛 国家金奖',
@@ -4893,6 +5185,8 @@
 				var certViewerLevel = document.getElementById('certViewerLevel');
 				var certViewerYear = document.getElementById('certViewerYear');
 				var certViewerCode = document.getElementById('certViewerCode');
+				var certViewerBox = document.getElementById('certViewerBox');
+				var certZoom = createZoomController(certViewerBox, certViewerImg);
 
 				function openCertViewer(cert) {
 					if (!certViewerMask) return;
@@ -4904,12 +5198,14 @@
 					certViewerCode.textContent = cert.code;
 					certViewerMask.classList.add('open');
 					document.body.style.overflow = 'hidden';
+					certZoom.reset(false);
 				}
 
 				function closeCertViewer() {
 					if (!certViewerMask) return;
 					certViewerMask.classList.remove('open');
 					document.body.style.overflow = '';
+					certZoom.reset(false);
 					setTimeout(function() {
 						certViewerImg.src = '';
 					}, 300);
@@ -4929,6 +5225,8 @@
 				var imgViewerImg = document.getElementById('imgViewerImg');
 				var imgViewerTitle = document.getElementById('imgViewerTitle');
 				var imgViewerDesc = document.getElementById('imgViewerDesc');
+				var imgViewerBox = document.getElementById('imgViewerBox');
+				var imgZoom = createZoomController(imgViewerBox, imgViewerImg);
 
 				function openImgViewer(src, title, desc) {
 					if (!imgViewerMask) return;
@@ -4937,12 +5235,14 @@
 					imgViewerDesc.textContent = desc || '';
 					imgViewerMask.classList.add('open');
 					document.body.style.overflow = 'hidden';
+					imgZoom.reset(false);
 				}
 
 				function closeImgViewer() {
 					if (!imgViewerMask) return;
 					imgViewerMask.classList.remove('open');
 					document.body.style.overflow = '';
+					imgZoom.reset(false);
 					setTimeout(function() {
 						imgViewerImg.src = '';
 					}, 300);
